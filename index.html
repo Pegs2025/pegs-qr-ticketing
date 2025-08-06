@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pegs x Gloucester Park - QR Scanner</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 2rem;
+      max-width: 400px;
+      text-align: center;
+    }
+    #video {
+      width: 100%;
+      max-width: 400px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+    }
+    #result {
+      font-size: 3rem;
+      margin-top: 1rem;
+    }
+    .valid {
+      color: green;
+    }
+    .used, .invalid {
+      color: red;
+    }
+    #message {
+      font-size: 1.2rem;
+      margin-top: 0.5rem;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Pegs x Gloucester Park - QR Scanner</h1>
+
+  <video id="video" autoplay></video>
+  <div id="result"></div>
+  <div id="message"></div>
+
+  <!-- ZXing Browser library for QR scanning -->
+  <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.19.1/umd/index.min.js"></script>
+  <script>
+    const codeReader = new ZXing.BrowserQRCodeReader();
+    const videoElement = document.getElementById('video');
+    const resultDiv = document.getElementById('result');
+    const messageDiv = document.getElementById('message');
+
+    const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxX4jT50kt3MI2sakPtHnaZ9uRvCK3CIYzRxM_17DqFE5tAaHb5GRQp79gvBq1AhwSV/exec';
+
+    function showResult(status, message) {
+      if (status === 'valid') {
+        resultDiv.textContent = '✅';
+        resultDiv.className = 'valid';
+        messageDiv.textContent = message;
+      } else if (status === 'used' || status === 'invalid') {
+        resultDiv.textContent = '❌';
+        resultDiv.className = 'used';
+        messageDiv.textContent = message;
+      } else {
+        resultDiv.textContent = '';
+        messageDiv.textContent = '';
+      }
+    }
+
+    async function checkTicket(ticketId) {
+      try {
+        const response = await fetch(WEB_APP_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'scan', ticketId: ticketId })
+        });
+        const data = await response.json();
+        showResult(data.status, data.message);
+      } catch (error) {
+        showResult('invalid', 'Network or server error');
+        console.error(error);
+      }
+    }
+
+    async function startScanner() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        videoElement.srcObject = stream;
+
+        codeReader.decodeFromVideoDevice(null, videoElement, (result, err) => {
+          if (result) {
+            // Stop scanning after first detection
+            codeReader.reset();
+
+            const ticketId = result.text.trim();
+            checkTicket(ticketId);
+          }
+          if (err && !(err instanceof ZXing.NotFoundException)) {
+            console.error(err);
+          }
+        });
+      } catch (err) {
+        messageDiv.textContent = 'Camera access denied or not available.';
+        console.error(err);
+      }
+    }
+
+    startScanner();
+  </script>
+</body>
+</html>
