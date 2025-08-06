@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Pegs x Gloucester Park - Ticket Generator</title>
+<style>
+  body { font-family: Arial, sans-serif; padding: 20px; max-width: 400px; margin: auto; }
+  label { display: block; margin-top: 10px; }
+  input { width: 100%; padding: 8px; margin-top: 5px; }
+  button { margin-top: 15px; padding: 10px; width: 100%; font-size: 16px; }
+  #qrcode { margin-top: 20px; text-align: center; }
+</style>
+</head>
+<body>
+<h1>Pegs x Gloucester Park Ticket Generator</h1>
+
+<form id="ticketForm">
+  <label for="name">Name *</label>
+  <input id="name" name="name" required />
+
+  <label for="email">Email *</label>
+  <input id="email" name="email" type="email" required />
+
+  <label for="mobile">Mobile Number *</label>
+  <input id="mobile" name="mobile" type="tel" required />
+
+  <button type="submit">Generate Ticket & QR Code</button>
+</form>
+
+<div id="qrcode"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+<script>
+  const form = document.getElementById('ticketForm');
+  const qrDiv = document.getElementById('qrcode');
+
+  function generateTicketId() {
+    return 'TICKET-' + Math.random().toString(36).substr(2, 9).toUpperCase();
+  }
+
+  form.addEventListener('submit', async e => {
+    e.preventDefault();
+
+    const name = form.name.value.trim();
+    const email = form.email.value.trim();
+    const mobile = form.mobile.value.trim();
+    const ticketId = generateTicketId();
+    const issuedAt = new Date().toISOString();
+
+    const payload = {
+      action: "issue",
+      name,
+      email,
+      mobile,
+      ticketId,
+      issuedAt
+    };
+
+    try {
+      const response = await fetch('AKfycbwIZJ4LjnrTMB4jy1VAwfieXARFbOmek7X53oMiHruXTsmyu6DTrAPC9JEUK4goqBcv>', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+        headers: { 'Content-Type': 'application/json' }
+      });
+      const data = await response.json();
+
+      if(data.status === 'success') {
+        qrDiv.innerHTML = '';
+        const qrText = ticketId; // We just encode ticket ID in QR
+        QRCode.toCanvas(qrText, { width: 250 }, function (error, canvas) {
+          if (error) console.error(error);
+          qrDiv.appendChild(canvas);
+        });
+      } else {
+        alert('Error issuing ticket: ' + data.message);
+      }
+    } catch (err) {
+      alert('Network error: ' + err.message);
+    }
+  });
+</script>
+</body>
+</html>

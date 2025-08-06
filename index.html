@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Pegs x Gloucester Park - Ticket Scanner</title>
+<style>
+  body { font-family: Arial, sans-serif; padding: 20px; max-width: 400px; margin: auto; text-align: center; }
+  video { width: 100%; max-width: 400px; border: 1px solid #ccc; }
+  #result { font-size: 48px; margin-top: 20px; height: 60px; }
+  .valid { color: green; }
+  .used, .invalid { color: red; }
+</style>
+</head>
+<body>
+<h1>Pegs x Gloucester Park Ticket Scanner</h1>
+<video id="video" playsinline></video>
+<div id="result"></div>
+
+<script src="https://unpkg.com/@zxing/library@latest"></script>
+<script>
+  const codeReader = new ZXing.BrowserQRCodeReader();
+  const videoElement = document.getElementById('video');
+  const resultDiv = document.getElementById('result');
+  let scanning = false;
+
+  function showResult(status) {
+    if(status === 'valid') {
+      resultDiv.textContent = '✅ Ticket Accepted';
+      resultDiv.className = 'valid';
+    } else if(status === 'used') {
+      resultDiv.textContent = '❌ Ticket Already Scanned';
+      resultDiv.className = 'used';
+    } else {
+      resultDiv.textContent = '❌ Invalid Ticket';
+      resultDiv.className = 'invalid';
+    }
+  }
+
+  async function sendScan(ticketId) {
+    const payload = { action: "scan", ticketId };
+    try {
+      const response = await fetch('<AKfycbwIZJ4LjnrTMB4jy1VAwfieXARFbOmek7X53oMiHruXTsmyu6DTrAPC9JEUK4goqBcv>', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+        headers: { 'Content-Type': 'application/json' }
+      });
+      const data = await response.json();
+      showResult(data.status);
+    } catch (err) {
+      resultDiv.textContent = '❌ Network error';
+      resultDiv.className = 'invalid';
+    }
+  }
+
+  async function startScanner() {
+    try {
+      scanning = true;
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      videoElement.srcObject = stream;
+      videoElement.play();
+
+      codeReader.decodeFromVideoElement(videoElement, (result, err) => {
+        if (result) {
+          if (scanning) {
+            scanning = false; // prevent multiple scans
+            sendScan(result.text);
+            setTimeout(() => { scanning = true; resultDiv.textContent = ''; }, 3000);
+          }
+        }
+      });
+    } catch(e) {
+      alert('Camera not accessible: ' + e);
+    }
+  }
+
+  startScanner();
+</script>
+</body>
+</html>
